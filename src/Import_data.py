@@ -16,7 +16,7 @@ from pathlib import Path
 import requests
 
 class Dataloader: 
-    DATA_DIR = Path(__file__).resolve().parent / "data"
+    DATA_DIR = Path("data")
     CSV_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv"
     GZ_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv.gz" 
     DOWNLOAD_URL = "https://opendata.cern.ch/record/328/files/atlas-higgs-challenge-2014-v2.csv.gz"
