@@ -15,33 +15,32 @@ from pathlib import Path
 
 import requests
 
-DATA_DIR = Path(__file__).resolve().parent / "data"
-CSV_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv"
-GZ_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv.gz" 
-DOWNLOAD_URL = "https://opendata.cern.ch/record/328/files/atlas-higgs-challenge-2014-v2.csv.gz"
+class Dataloader: 
+    DATA_DIR = Path(__file__).resolve().parent / "data"
+    CSV_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv"
+    GZ_PATH = DATA_DIR / "atlas-higgs-challenge-2014-v2.csv.gz" 
+    DOWNLOAD_URL = "https://opendata.cern.ch/record/328/files/atlas-higgs-challenge-2014-v2.csv.gz"
 
-def download_dataset():
-    if CSV_PATH.exists():
-        print(f"Dataset already exists at {CSV_PATH}. Skipping download.")
-        return
-    
-     else:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        print(f"Downloading dataset from {DOWNLOAD_URL}...")
-        response = requests.get(DOWNLOAD_URL, stream=True, timeout=60)
-        response.raise_for_status()  # Raise an error for bad responses
+    def download_dataset(self):
+        if self.CSV_PATH.exists():
+            print(f"Dataset already exists at {self.CSV_PATH}. Skipping download.")
+            return
+        
+        else:
+            self.DATA_DIR.mkdir(parents=True, exist_ok=True)
+            print(f"Downloading dataset from {self.DOWNLOAD_URL}...")
+            response = requests.get(self.DOWNLOAD_URL, stream=True, timeout=60)
+            response.raise_for_status()  # Raise an error for bad responses
 
-        with open(GZ_PATH, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+            with open(self.GZ_PATH, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
 
-        print("Download complete. Extracting the dataset...")
-        with gzip.open(GZ_PATH, "rb") as f_in:
-            with open(CSV_PATH, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+            print("Download complete. Extracting the dataset...")
+            with gzip.open(self.GZ_PATH, "rb") as f_in:
+                with open(self.CSV_PATH, "wb") as f_out:
+                    shutil.copyfileobj(f_in, f_out)
 
-        GZ_PATH.unlink()  # Remove the .gz file after extraction
-        print(f"Dataset extracted and saved to {CSV_PATH}.")
+            self.GZ_PATH.unlink()  # Remove the .gz file after extraction
+            print(f"Dataset extracted and saved to {self.CSV_PATH}.")
 
-if __name__ == "__main__":
-    download_dataset()
