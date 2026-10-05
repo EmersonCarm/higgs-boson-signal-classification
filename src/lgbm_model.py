@@ -11,9 +11,9 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import train_test_split
 
 
-def ams(s, b, b_reg=10.0):
-    """Approximate Median Significance (challenge metric)."""
-    return np.sqrt(2.0 * ((s + b + b_reg) * np.log(1.0 + s / (b + b_reg)) - s))
+def ams(s, b, s0=2000, b0=20000, breg=10):
+    eps = s0 / b0
+    return np.sqrt(2.0 * ((s + b) * np.log((1 + eps) * (s + b) / (b + breg)) - s))
 
 
 def prep(df, feature_group=None):
@@ -48,6 +48,30 @@ def best_ams_threshold(y_true, p, w, grid=None):
             best = (t, score)
     return best
 
+def normalize_weights(y_subset, w_subset, y_total, w_total):
+    """Rescale weights per class to maintain total weight proportions."""
+    w_rescaled = w_subset.copy()
+    for label in [0, 1]:
+        mask = y_subset == label
+        total_weight = w_subset[mask].sum()
+        # Find total weight for same label in full dataset
+        full_weight = w_total[y_total == label].sum()
+        # Scale proportionally
+        if total_weight > 0:
+            scale = total_weight / full_weight
+            w_rescaled[mask] *= scale
+    return w_rescaled
+
+def compute_ams_with_weights(p_val, y_val, weights_normalized):
+    thresholds = np.linspace(0.0, 0.99, 500)
+    scores = []
+    for t in thresholds:
+        sel = p_val > t
+        s = (weights_normalized[sel]*(y_val == 1)).sum()
+        b = (weights_normalized[sel]*(y_val == 0)).sum()
+        scores.append(ams(s, b))
+
+    return thresholds[best_idx], scores[best_idx]
 
 def train_lgbm(df, seed=42, feature_group=None):
     """Train on all features, or only one feature family ("DER" or "PRI")."""
