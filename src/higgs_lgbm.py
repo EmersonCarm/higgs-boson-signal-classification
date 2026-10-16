@@ -255,46 +255,5 @@ def plot_ams_curve(val, x="rejected", ax=None, label="AMS", b_reg=10.0):
     return ax
 
 
-# ---------------------------------------------------------------------------
-# Submission
-# ---------------------------------------------------------------------------
-def make_submission(model, df_test, threshold, path="submission.csv"):
-    """Kaggle-style file: EventId, RankOrder (1 = most signal-like), Class."""
-    X, _, _ = prep(df_test)
-    X = X[model.feature_name()]  # same columns, same order as training
-    p = model.predict(X, num_iteration=model.best_iteration)
-    rank = (-p).argsort(kind="stable").argsort() + 1
-    out = pd.DataFrame(
-        {
-            "EventId": df_test["EventId"].values,
-            "RankOrder": rank,
-            "Class": np.where(p >= threshold, "s", "b"),
-        }
-    ).sort_values("EventId")
-    out.to_csv(path, index=False)
-    return out
 
 
-# ---------------------------------------------------------------------------
-# Example run
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    train_df = load_kaggle_training("atlas-higgs-challenge-2014-v2.csv")
-    model, thr, val = train_lgbm(train_df)
-
-    plot_roc(val)
-    plot_ams_curve(val, x="rejected")
-    plot_ams_curve(val, x="threshold")
-
-    # Compare models trained on derived (DER) and primitive (PRI) feature families.
-    ams_by_group = {}
-    for feature_group in ("DER", "PRI"):
-        _, _, ams_by_group[feature_group] = train_lgbm(
-            train_df, feature_group=feature_group
-        )
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    for feature_group, group_val in ams_by_group.items():
-        plot_ams_curve(group_val, x="rejected", ax=ax, label=f"{feature_group}-only")
-    ax.set_title("AMS by feature family, validation split")
-    plt.show()
