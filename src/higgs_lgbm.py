@@ -1,20 +1,3 @@
-"""LightGBM pipeline for the ATLAS Higgs ML Challenge 2014 data (v2 rewrite).
-
-Expected input: the Kaggle-style training table, i.e. the original CERN Open
-Data columns (EventId, DER_*, PRI_*, Weight, Label in {'s','b'}).
-
-If you are using the full CERN Open Data file (818,238 events) that carries
-KaggleSet / KaggleWeight columns, run it through load_kaggle_training() first.
-That keeps the 250,000 'KaggleSet == t' events and swaps in KaggleWeight, so the
-class weight totals (about 692 signal, about 411,000 background) match the
-challenge normalization and your AMS values are comparable to the leaderboard.
-
-Usage:
-    train_df = load_kaggle_training("atlas-higgs-challenge-2014-v2.csv")
-    model, thr, val = train_lgbm(train_df)
-    plot_ams_curve(val, x="rejected")
-    plot_ams_curve(val, x="threshold")
-"""
 import numpy as np
 import pandas as pd
 import lightgbm as lgb
@@ -23,9 +6,7 @@ from sklearn.metrics import roc_curve, roc_auc_score
 from sklearn.model_selection import train_test_split
 
 
-# ---------------------------------------------------------------------------
 # Data helpers
-# ---------------------------------------------------------------------------
 def load_kaggle_training(path):
     """Load the CERN Open Data CSV and return the challenge training set."""
     df = pd.read_csv(path)
@@ -37,8 +18,6 @@ def load_kaggle_training(path):
 
 def prep(df, feature_group=None):
     """Return features X, binary labels y, weights w. -999.0 becomes NaN
-    (LightGBM routes missing values natively, so no imputation needed).
-
     feature_group can be "DER" or "PRI" to use only that feature family.
     """
     if feature_group not in (None, "DER", "PRI"):
@@ -53,15 +32,9 @@ def prep(df, feature_group=None):
     return X, y, w
 
 
-# ---------------------------------------------------------------------------
+
 # Weights
-# ---------------------------------------------------------------------------
 def balance_weights(y, w):
-    """Training weights: signal and background each sum to the same total,
-    then scaled to mean 1. The raw challenge weights make signal about 0.2% of
-    the total weight, which (a) pushes predicted probabilities toward zero so
-    0.5-0.95 cuts are meaningless and (b) makes hessians so small that
-    LightGBM's min_sum_hessian_in_leaf can block splits."""
     y = np.asarray(y)
     w = np.asarray(w, dtype=float).copy()
     w[y == 1] *= w[y == 0].sum() / w[y == 1].sum()
@@ -79,9 +52,8 @@ def rescale_to_totals(y_sub, w_sub, y_full, w_full):
     return w_out
 
 
-# ---------------------------------------------------------------------------
+
 # AMS
-# ---------------------------------------------------------------------------
 def ams(s, b, b_reg=10.0):
     """Approximate median significance (works on scalars or arrays)."""
     s = np.asarray(s, dtype=float)
@@ -126,17 +98,11 @@ def best_ams_threshold(y_true, p, w, b_reg=10.0):
     return scan["threshold"][i], scan["ams"][i]
 
 
-# ---------------------------------------------------------------------------
-# Training
-# ---------------------------------------------------------------------------
-def train_lgbm(df, seed=42, feature_group=None):
-    """Train on all features, or only one feature family ("DER" or "PRI").
 
-    Returns (model, best_threshold, val) where val holds the held-out split:
-      y, p       labels and predicted signal probability
-      w          original event weights (physical ROC)
-      w_ams      weights rescaled to full-sample class totals (AMS)
-    """
+# Training
+def train_lgbm(df, seed=42, feature_group=None):
+    """Train on all features, or only one feature family ("DER" or "PRI")"""
+
     X, y, w = prep(df, feature_group=feature_group)
     Xtr, Xva, ytr, yva, wtr, wva = train_test_split(
         X, y, w, test_size=0.2, stratify=y, random_state=seed
@@ -186,9 +152,8 @@ def train_lgbm(df, seed=42, feature_group=None):
     return model, thr, val
 
 
-# ---------------------------------------------------------------------------
+
 # Plots
-# ---------------------------------------------------------------------------
 def plot_roc(val, weighted=True, ax=None):
     """ROC curve on the held-out validation split.
 
